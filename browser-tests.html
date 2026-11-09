@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orbit Simulator — Scientific Tests</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      padding: 32px;
+      background: #05070f;
+      color: #e8eefc;
+      font: 15px/1.55 "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    }
+    main { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.4rem; margin: 0 0 6px; }
+    p { color: #91a2c0; margin: 0 0 20px; }
+    #summary {
+      display: inline-block;
+      padding: 10px 14px;
+      border: 1px solid #1e2a44;
+      border-radius: 10px;
+      font-family: ui-monospace, Menlo, monospace;
+      margin-bottom: 20px;
+    }
+    #summary.pass { color: #7cffb2; border-color: #2f6f4d; background: #0a1c16; }
+    #summary.fail { color: #ff7a90; border-color: #7a2f40; background: #1c0a10; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li {
+      padding: 8px 10px;
+      border-bottom: 1px solid #142039;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.8rem;
+    }
+    li.pass { color: #9fe9bd; }
+    li.fail { color: #ff9aaa; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Scientific test suite</h1>
+    <p>
+      Browser-run checks for orbital geometry, Newtonian acceleration, Velocity
+      Verlet stability, Kepler's second law, and the simulation clock.
+    </p>
+    <div id="summary">Running…</div>
+    <ul id="results"></ul>
+  </main>
+  <script type="module" src="./browser-suite.js"></script>
+</body>
+</html>
