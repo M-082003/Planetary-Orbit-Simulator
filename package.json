@@ -1,0 +1,13 @@
+{
+  "name": "planetary-orbit-simulator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Interactive two-body planetary orbit simulator using Newtonian gravity and Velocity Verlet integration.",
+  "scripts": {
+    "serve": "python3 -m http.server 8000",
+    "serve:web": "python3 -m http.server 8000",
+    "serve:api": "python3 -m uvicorn backend.app:app --reload --port 8001",
+    "test": "node --test tests/orbit.test.mjs tests/integrator.test.mjs tests/kepler.test.mjs tests/simulation.test.mjs"
+  }
+}
