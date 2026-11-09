@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Interactive two-body planetary orbit simulator demonstrating Newtonian gravity, elliptical orbits, and Kepler's laws.">
+  <title>Planetary Orbit Simulator</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="title-block">
+        <p class="eyebrow">Undergraduate Astronomy · Two-Body Dynamics</p>
+        <h1>Planetary Orbit Simulator</h1>
+        <p class="subtitle">
+          Elliptical motion under Newtonian gravity, integrated with Velocity Verlet.
+        </p>
+      </div>
+      <div class="header-metrics" aria-label="Simulation status">
+        <span id="status-pill" class="status-pill running">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="status-text">Running</span>
+        </span>
+        <span class="header-metric">
+          Period <strong id="header-period">365.25 d</strong>
+        </span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="simulation-card" aria-labelledby="simulation-heading">
+        <h2 id="simulation-heading" class="sr-only">Orbit simulation</h2>
+        <div class="canvas-wrap" id="canvas-wrap">
+          <canvas
+            id="orbit-canvas"
+            role="img"
+            aria-label="A planet orbiting the Sun on an ellipse. The Sun is at one focus. Velocity and acceleration vectors, perihelion and aphelion markers, and equal-time swept areas are shown."
+          ></canvas>
+          <p class="canvas-note">Orbital distances to scale · body sizes exaggerated</p>
+        </div>
+        <div class="canvas-footer">
+          <div class="legend" aria-label="Canvas legend">
+            <span class="legend-item"><span class="swatch sun" aria-hidden="true"></span>Sun</span>
+            <span class="legend-item"><span class="swatch planet" aria-hidden="true"></span>Planet</span>
+            <span class="legend-item"><span class="swatch velocity" aria-hidden="true"></span>Velocity</span>
+            <span class="legend-item"><span class="swatch acceleration" aria-hidden="true"></span>Acceleration</span>
+            <span class="legend-item"><span class="swatch area" aria-hidden="true"></span>Equal-time area</span>
+          </div>
+          <div class="time-readout">
+            <span>Elapsed <strong id="elapsed-time">0.00 d</strong></span>
+            <span>Orbits <strong id="orbit-count">0</strong></span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="sidebar" aria-label="Controls and orbital information">
+        <section class="panel controls-panel" aria-labelledby="controls-heading">
+          <div class="panel-heading">
+            <h2 id="controls-heading">Controls</h2>
+            <span class="badge">Live</span>
+          </div>
+
+          <div class="button-row">
+            <button id="play-pause" class="btn primary" type="button">Pause</button>
+            <button id="reset" class="btn" type="button">Reset</button>
+          </div>
+
+          <div class="control">
+            <div class="control-label">
+              <label for="eccentricity">Eccentricity <em>e</em></label>
+              <output id="eccentricity-value" for="eccentricity">0.50</output>
+            </div>
+            <input id="eccentricity" type="range" min="0" max="0.90" step="0.01" value="0.50">
+            <p class="hint">
+              Changing <em>e</em> restarts the orbit at perihelion. The semi-major axis stays fixed at 1 AU.
+            </p>
+            <p id="eccentricity-note" class="hint warning" hidden>
+              At <em>e</em> = 0 the orbit is circular; a unique perihelion and aphelion are undefined.
+            </p>
+          </div>
+
+          <div class="control">
+            <div class="control-label">
+              <label for="speed">Simulation speed</label>
+              <output id="speed-value" for="speed">30.0 d/s</output>
+            </div>
+            <input id="speed" type="range" min="0" max="1000" step="1" value="695">
+            <p class="hint">Simulated days per real-time second. One orbit takes about 12 s at the default speed.</p>
+          </div>
+
+          <fieldset class="toggle-group">
+            <legend class="sr-only">Display options</legend>
+            <label class="toggle">
+              <input id="show-vectors" type="checkbox" checked>
+              <span>Velocity &amp; acceleration vectors</span>
+            </label>
+            <label class="toggle">
+              <input id="show-areas" type="checkbox" checked>
+              <span>Equal-time swept areas</span>
+            </label>
+          </fieldset>
+        </section>
+
+        <section class="panel assistant-panel" aria-labelledby="assistant-heading">
+          <div class="panel-heading">
+            <h2 id="assistant-heading">AI Gezegen Asistanı</h2>
+            <span class="badge">EVREN LLM</span>
+          </div>
+          <p class="hint assistant-intro">
+            Gezegen hareketleri, Newton kütleçekimi, Kepler yasaları ve yörünge
+            fiziği hakkında Türkçe soru sorun.
+          </p>
+          <form id="assistant-form" class="assistant-form" novalidate>
+            <label class="sr-only" for="assistant-question">Sorunuz</label>
+            <textarea
+              id="assistant-question"
+              name="message"
+              rows="3"
+              maxlength="2000"
+              placeholder="Örn. Dışmerkezlik artınca yörünge nasıl değişir?"
+              required
+            ></textarea>
+            <div class="assistant-actions">
+              <span class="assistant-hint">Ctrl/Cmd + Enter ile gönder</span>
+              <button id="assistant-send" class="btn primary" type="submit">Gönder</button>
+            </div>
+          </form>
+          <div id="assistant-status" class="assistant-status" role="status" aria-live="polite" hidden>
+            <span class="assistant-spinner" aria-hidden="true"></span>
+            <span>Yanıt hazırlanıyor…</span>
+          </div>
+          <div id="assistant-response" class="assistant-response" aria-live="polite" hidden>
+            <p class="assistant-response-label">Yanıt</p>
+            <div id="assistant-answer" class="assistant-answer"></div>
+          </div>
+          <p class="hint assistant-privacy">
+            Sorular yalnızca yerel backend üzerinden EVREN LLM servisine gönderilir.
+            API anahtarı tarayıcıya aktarılmaz.
+          </p>
+        </section>
+
+        <section class="panel data-panel" aria-labelledby="data-heading">
+          <div class="panel-heading">
+            <h2 id="data-heading">Orbital Data</h2>
+            <span class="badge">SI internally</span>
+          </div>
+
+          <dl class="data-list">
+            <div class="data-row">
+              <dt>Semi-major axis <em>a</em></dt>
+              <dd><span id="data-a">1.000 AU</span><small id="data-a-si">1.496 × 10¹¹ m</small></dd>
+            </div>
+            <div class="data-row">
+              <dt>Eccentricity <em>e</em></dt>
+              <dd><span id="data-e">0.50</span><small>dimensionless</small></dd>
+            </div>
+            <div class="data-row">
+              <dt>Orbital period <em>T</em></dt>
+              <dd><span id="data-period">365.25 d</span><small id="data-period-si">1.000 yr</small></dd>
+            </div>
+            <div class="data-row">
+              <dt>Perihelion <em>r</em><sub>p</sub></dt>
+              <dd><span id="data-rp">0.500 AU</span><small id="data-rp-si">7.480 × 10¹⁰ m</small></dd>
+            </div>
+            <div class="data-row">
+              <dt>Aphelion <em>r</em><sub>a</sub></dt>
+              <dd><span id="data-ra">1.500 AU</span><small id="data-ra-si">2.244 × 10¹¹ m</small></dd>
+            </div>
+            <div class="data-row">
+              <dt>Current distance <em>r</em></dt>
+              <dd><span id="data-r">0.500 AU</span><small id="data-r-si">7.480 × 10¹⁰ m</small></dd>
+            </div>
+            <div class="data-row">
+              <dt>Speed <em>v</em></dt>
+              <dd><span id="data-v">51.59 km/s</span><small>instantaneous</small></dd>
+            </div>
+            <div class="data-row">
+              <dt>Acceleration <em>a</em></dt>
+              <dd><span id="data-accel">2.37 × 10⁻² m/s²</span><small>Newtonian gravity</small></dd>
+            </div>
+            <div class="data-row">
+              <dt>True anomaly <em>ν</em></dt>
+              <dd><span id="data-nu">0.0°</span><small>from perihelion</small></dd>
+            </div>
+            <div class="data-row">
+              <dt>Areal velocity <em>dA/dt</em></dt>
+              <dd><span id="data-areal">0.0074 AU²/d</span><small id="data-areal-si">1.929 × 10¹⁵ m²/s</small></dd>
+            </div>
+            <div class="data-row">
+              <dt>Area per <em>T</em>/16</dt>
+              <dd><span id="data-area-wedge">0.1700 AU²</span><small>equal for every wedge</small></dd>
+            </div>
+            <div class="data-row">
+              <dt>Specific energy <em>ε</em></dt>
+              <dd><span id="data-energy">−4.436 × 10⁸ J/kg</span><small>constant of motion</small></dd>
+            </div>
+            <div class="data-row">
+              <dt>Angular momentum <em>h</em></dt>
+              <dd><span id="data-h">3.86 × 10¹⁵ m²/s</span><small>constant of motion</small></dd>
+            </div>
+          </dl>
+
+          <details class="advanced">
+            <summary>Numerical health</summary>
+            <dl class="data-list compact">
+              <div class="data-row">
+                <dt>Relative energy error</dt>
+                <dd><span id="data-energy-error">0.00 %</span></dd>
+              </div>
+              <div class="data-row">
+                <dt>Relative <em>h</em> error</dt>
+                <dd><span id="data-h-error">0.00 %</span></dd>
+              </div>
+              <div class="data-row">
+                <dt>Time step Δ<em>t</em></dt>
+                <dd><span id="data-dt">963 s</span></dd>
+              </div>
+              <div class="data-row">
+                <dt>Steps per orbit</dt>
+                <dd><span id="data-steps">32,768</span></dd>
+              </div>
+            </dl>
+            <p class="hint">
+              Velocity Verlet is symplectic: energy error stays bounded and oscillatory rather than growing linearly.
+            </p>
+          </details>
+        </section>
+
+        <section class="panel equations-panel" aria-labelledby="equations-heading">
+          <div class="panel-heading">
+            <h2 id="equations-heading">Physics &amp; Equations</h2>
+            <span class="badge">Reference</span>
+          </div>
+
+          <details open>
+            <summary>Gravity &amp; motion</summary>
+            <div class="equation">
+              <span class="eq-label">Newton's universal law of gravitation</span>
+              <span class="eq"><em>F</em> = <em>G M</em><sub>☉</sub><em>m</em> / <em>r</em><sup>2</sup></span>
+            </div>
+            <div class="equation">
+              <span class="eq-label">Gravitational acceleration of the planet</span>
+              <span class="eq"><strong>a</strong> = −<em>G M</em><sub>☉</sub><strong>r</strong> / <em>r</em><sup>3</sup> = −<em>μ</em><strong>r</strong> / <em>r</em><sup>3</sup></span>
+            </div>
+          </details>
+
+          <details open>
+            <summary>Orbit geometry</summary>
+            <div class="equation">
+              <span class="eq-label">Ellipse with the Sun at one focus</span>
+              <span class="eq"><em>r</em>(<em>ν</em>) = <em>a</em>(1 − <em>e</em><sup>2</sup>) / (1 + <em>e</em> cos <em>ν</em>)</span>
+            </div>
+            <div class="equation">
+              <span class="eq-label">Perihelion and aphelion distances</span>
+              <span class="eq"><em>r</em><sub>p</sub> = <em>a</em>(1 − <em>e</em>), &nbsp; <em>r</em><sub>a</sub> = <em>a</em>(1 + <em>e</em>)</span>
+            </div>
+            <div class="equation">
+              <span class="eq-label">Eccentricity from the apsides</span>
+              <span class="eq"><em>e</em> = (<em>r</em><sub>a</sub> − <em>r</em><sub>p</sub>) / (<em>r</em><sub>a</sub> + <em>r</em><sub>p</sub>)</span>
+            </div>
+          </details>
+
+          <details open>
+            <summary>Energy &amp; launch conditions</summary>
+            <div class="equation">
+              <span class="eq-label">Vis-viva equation</span>
+              <span class="eq"><em>v</em> = √( <em>μ</em>(2/<em>r</em> − 1/<em>a</em>) )</span>
+            </div>
+            <div class="equation">
+              <span class="eq-label">Perihelion launch speed</span>
+              <span class="eq"><em>v</em><sub>p</sub> = √( <em>μ</em>(1 + <em>e</em>) / (<em>a</em>(1 − <em>e</em>)) )</span>
+            </div>
+            <div class="equation">
+              <span class="eq-label">Specific orbital energy</span>
+              <span class="eq"><em>ε</em> = <em>v</em><sup>2</sup>/2 − <em>μ</em>/<em>r</em> = −<em>μ</em>/(2<em>a</em>)</span>
+            </div>
+          </details>
+
+          <details open>
+            <summary>Kepler's laws</summary>
+            <div class="equation">
+              <span class="eq-label">Kepler's third law</span>
+              <span class="eq"><em>T</em> = 2π √( <em>a</em><sup>3</sup>/<em>μ</em> ) = 2π √( <em>a</em><sup>3</sup>/(<em>G M</em><sub>☉</sub>) )</span>
+            </div>
+            <div class="equation">
+              <span class="eq-label">Specific angular momentum</span>
+              <span class="eq"><strong>h</strong> = <strong>r</strong> × <strong>v</strong>, &nbsp; <em>h</em> = √( <em>μ a</em>(1 − <em>e</em><sup>2</sup>) )</span>
+            </div>
+            <div class="equation">
+              <span class="eq-label">Kepler's second law: constant areal velocity</span>
+              <span class="eq">d<em>A</em>/d<em>t</em> = <em>h</em>/2</span>
+            </div>
+            <div class="equation">
+              <span class="eq-label">Area swept in equal time intervals</span>
+              <span class="eq"><em>A</em>(Δ<em>t</em>) = <em>h</em> Δ<em>t</em> / 2</span>
+            </div>
+          </details>
+
+          <details open>
+            <summary>Velocity Verlet integration</summary>
+            <div class="equation">
+              <span class="eq-label">Position update</span>
+              <span class="eq"><strong>r</strong><sub>n+1</sub> = <strong>r</strong><sub>n</sub> + <strong>v</strong><sub>n</sub>Δ<em>t</em> + ½<strong>a</strong><sub>n</sub>Δ<em>t</em><sup>2</sup></span>
+            </div>
+            <div class="equation">
+              <span class="eq-label">Velocity update</span>
+              <span class="eq"><strong>v</strong><sub>n+1</sub> = <strong>v</strong><sub>n</sub> + ½(<strong>a</strong><sub>n</sub> + <strong>a</strong><sub>n+1</sub>)Δ<em>t</em></span>
+            </div>
+            <div class="equation">
+              <span class="eq-label">Fixed time step</span>
+              <span class="eq">Δ<em>t</em> = <em>T</em>/32,768 ≈ 963 s</span>
+            </div>
+          </details>
+
+          <p class="model-note">
+            <strong>Model:</strong> ideal two-body Kepler problem with the Sun fixed at a focus.
+            Planet mass, general relativity, perturbations, and radiation pressure are neglected.
+            All calculations use SI units; AU and days are display units.
+          </p>
+        </section>
+      </aside>
+    </main>
+
+    <footer class="app-footer">
+      <p>
+        <strong>Numerical method:</strong> Velocity Verlet, fixed Δ<em>t</em>, 32,768 steps per orbit.
+        <strong>Central mass:</strong> Sun. <strong>Semi-major axis:</strong> fixed at 1 AU.
+      </p>
+      <p>Built with HTML, CSS, and vanilla JavaScript. No external services or API keys.</p>
+    </footer>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
